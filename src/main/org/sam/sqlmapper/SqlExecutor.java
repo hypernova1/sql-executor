@@ -106,6 +106,15 @@ public abstract class SqlExecutor<T> {
         return 0;
     }
 
+    public void execute(String sql) {
+        try (Connection conn = DriverManager.getConnection(url, id, password)) {
+            Statement statement = conn.createStatement();
+            statement.execute(sql);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
     public int selectCount(String sql, Object... args) {
         try (Connection conn = DriverManager.getConnection(url, id, password)) {
             PreparedStatement ps = conn.prepareStatement(sql);
