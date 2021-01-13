@@ -5,10 +5,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public abstract class SqlExecutor<T> {
 
@@ -18,22 +15,35 @@ public abstract class SqlExecutor<T> {
 
     private final Class<T> type;
 
-    @SuppressWarnings("unchecked")
     public SqlExecutor(String driverName, String url, String id, String password) {
+        this.type = getGenericType();
         this.url = url;
         this.id = id;
         this.password = password;
 
-        Type sType = getClass().getGenericSuperclass();
-        if (sType instanceof ParameterizedType) {
-            this.type = (Class<T>) ((ParameterizedType) sType).getActualTypeArguments()[0];
-        } else {
-            throw new RuntimeException();
-        }
-
         try {
             Class.forName(driverName);
         } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Class<T> getGenericType() {
+        Type genericSuperClass = getClass().getGenericSuperclass();
+        if (!(genericSuperClass instanceof ParameterizedType)) {
+            throw new RuntimeException();
+        }
+        ParameterizedType parameterizedType = (ParameterizedType) genericSuperClass;
+        Type actualTypeArgument = parameterizedType.getActualTypeArguments()[0];
+        return (Class<T>) actualTypeArgument;
+    }
+
+    public void execute(String sql) {
+        try (Connection conn = DriverManager.getConnection(url, id, password)) {
+            Statement statement = conn.createStatement();
+            statement.execute(sql);
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
@@ -106,15 +116,6 @@ public abstract class SqlExecutor<T> {
         return 0;
     }
 
-    public void execute(String sql) {
-        try (Connection conn = DriverManager.getConnection(url, id, password)) {
-            Statement statement = conn.createStatement();
-            statement.execute(sql);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
     public int selectCount(String sql, Object... args) {
         try (Connection conn = DriverManager.getConnection(url, id, password)) {
             PreparedStatement ps = conn.prepareStatement(sql);
@@ -139,9 +140,14 @@ public abstract class SqlExecutor<T> {
                 String columnName = metaData.getColumnName(i);
                 String setterName = getSetterName(columnName);
                 Object value = rs.getObject(columnName);
-                Method setter = methods.stream().filter(method -> method.getName().equals(setterName))
-                        .findAny()
-                        .orElse(null);
+                Optional<Method> optionalSetter = methods.stream()
+                        .filter(method -> method.getName().equals(setterName))
+                        .findAny();
+                if (!optionalSetter.isPresent()) {
+                    continue;
+                }
+
+                Method setter = optionalSetter.get();
                 Class<?> parameterType = Objects.requireNonNull(setter).getParameterTypes()[0];
                 if (value instanceof Number && Number.class.isAssignableFrom(parameterType)) {
                     Method method = parameterType.getMethod("parse" + parameterType.getSimpleName(), String.class);
