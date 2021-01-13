@@ -17,7 +17,7 @@ class SqlExecutorTest {
         final String password = "";
         this.sqlExecutor = new SqlExecutor<Employee>(driverName, url, id, password) {};
 
-        String sql = "create or replace table employee" +
+        String sql = "CREATE TABLE If Not Exists `employee`" +
                 "( " +
                 "seq int auto_increment, " +
                 "name varchar(50) not null, " +
