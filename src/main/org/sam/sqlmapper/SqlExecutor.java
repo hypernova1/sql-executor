@@ -41,8 +41,8 @@ public abstract class SqlExecutor<T> {
 
     public void execute(String sql) {
         try (Connection conn = DriverManager.getConnection(url, id, password)) {
-            Statement statement = conn.createStatement();
-            statement.execute(sql);
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.execute();
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -51,9 +51,7 @@ public abstract class SqlExecutor<T> {
     public int insert(String sql, Object... args) {
         try (Connection conn = DriverManager.getConnection(url, id, password)) {
             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            for (int i = 1; i <= args.length; i++) {
-                ps.setObject(i, args[i - 1]);
-            }
+            setPreparedStatement(ps, args);
             ps.executeUpdate();
             ResultSet rs = ps.getGeneratedKeys();
             if (rs.next()) {
@@ -68,12 +66,9 @@ public abstract class SqlExecutor<T> {
     public List<T> selectList(String sql, Object... args) {
         List<T> list = new ArrayList<>();
         try (Connection conn = DriverManager.getConnection(url, id, password)) {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            for (int i = 1; i <= args.length; i++) {
-                ps.setObject(i, args[i - 1]);
-            }
             List<Method> methods = Arrays.asList(type.getMethods());
-            ResultSet rs = ps.executeQuery();
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ResultSet rs = getResultSet(ps, args);
             ResultSetMetaData metaData = rs.getMetaData();
             while (rs.next()) {
                 T instance = createInstance(methods, rs, metaData);
@@ -87,12 +82,9 @@ public abstract class SqlExecutor<T> {
 
     public T selectOne(String sql, Object... args) {
         try (Connection conn = DriverManager.getConnection(url, id, password)) {
-            PreparedStatement ps = conn.prepareStatement(sql);
-            for (int i = 1; i <= args.length; i++) {
-                ps.setObject(i, args[i - 1]);
-            }
             List<Method> methods = Arrays.asList(type.getMethods());
-            ResultSet rs = ps.executeQuery();
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ResultSet rs = getResultSet(ps, args);
             ResultSetMetaData metaData = rs.getMetaData();
             if (rs.next()) {
                 return createInstance(methods, rs, metaData);
@@ -106,9 +98,7 @@ public abstract class SqlExecutor<T> {
     public int updateOrDelete(String sql, Object... args) {
         try (Connection conn = DriverManager.getConnection(url, id, password)) {
             PreparedStatement ps = conn.prepareStatement(sql);
-            for (int i = 1; i <= args.length; i++) {
-                ps.setObject(i, args[i - 1]);
-            }
+            setPreparedStatement(ps, args);
             return ps.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -119,10 +109,7 @@ public abstract class SqlExecutor<T> {
     public int selectCount(String sql, Object... args) {
         try (Connection conn = DriverManager.getConnection(url, id, password)) {
             PreparedStatement ps = conn.prepareStatement(sql);
-            for (int i = 1; i <= args.length; i++) {
-                ps.setObject(i, args[i - 1]);
-            }
-            ResultSet rs = ps.executeQuery();
+            ResultSet rs = getResultSet(ps, args);
             if (rs.next()) {
                 return rs.getInt(1);
             }
@@ -130,6 +117,17 @@ public abstract class SqlExecutor<T> {
             e.printStackTrace();
         }
         return 0;
+    }
+
+    private ResultSet getResultSet(PreparedStatement ps, Object[] args) throws SQLException {
+        setPreparedStatement(ps, args);
+        return ps.executeQuery();
+    }
+
+    private void setPreparedStatement(PreparedStatement ps, Object[] args) throws SQLException {
+        for (int i = 1; i <= args.length; i++) {
+            ps.setObject(i, args[i - 1]);
+        }
     }
 
     private T createInstance(List<Method> methods, ResultSet rs, ResultSetMetaData metaData) {
