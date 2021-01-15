@@ -1,21 +1,21 @@
 package org.sam.sqlmapper;
 
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class SqlExecutorTest {
 
-    SqlExecutor<Employee> sqlExecutor;
+    static SqlExecutor<Employee> sqlExecutor;
 
-    @BeforeEach
-    void init() {
+    @BeforeAll
+    static void init() {
         final String driverName = "org.h2.Driver";
         final String url = "jdbc:h2:~/test";
         final String id = "sa";
         final String password = "";
-        this.sqlExecutor = new SqlExecutor<Employee>(driverName, url, id, password) {};
+        sqlExecutor = new EmployMapper(driverName, url, id, password);
 
         String sql = "CREATE TABLE If Not Exists `employee`" +
                 "( " +
