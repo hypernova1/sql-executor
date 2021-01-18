@@ -3,11 +3,11 @@ package org.sam.sqlmapper;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class SqlExecutorTest {
 
-    static SqlExecutor<Employee> sqlExecutor;
+    static Executor<Employee> sqlExecutor;
 
     @BeforeAll
     static void init() {

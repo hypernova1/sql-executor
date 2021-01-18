@@ -7,7 +7,7 @@ import java.lang.reflect.Type;
 import java.sql.*;
 import java.util.*;
 
-public abstract class SqlExecutor<T> {
+public abstract class SqlExecutor<T> implements Executor<T> {
 
     private final String url;
     private final String id;
@@ -39,8 +39,9 @@ public abstract class SqlExecutor<T> {
         return (Class<T>) actualTypeArgument;
     }
 
+    @Override
     public void execute(String sql) {
-        try (Connection conn = DriverManager.getConnection(url, id, password)) {
+        try (Connection conn = getConnection()) {
             PreparedStatement ps = conn.prepareStatement(sql);
             ps.execute();
         } catch (SQLException e) {
@@ -48,8 +49,9 @@ public abstract class SqlExecutor<T> {
         }
     }
 
+    @Override
     public int insert(String sql, Object... args) {
-        try (Connection conn = DriverManager.getConnection(url, id, password)) {
+        try (Connection conn = getConnection()) {
             PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             setPreparedStatement(ps, args);
             ps.executeUpdate();
@@ -63,9 +65,10 @@ public abstract class SqlExecutor<T> {
         return -1;
     }
 
+    @Override
     public List<T> selectList(String sql, Object... args) {
         List<T> list = new ArrayList<>();
-        try (Connection conn = DriverManager.getConnection(url, id, password)) {
+        try (Connection conn = getConnection()) {
             List<Method> methods = Arrays.asList(type.getMethods());
             PreparedStatement ps = conn.prepareStatement(sql);
             ResultSet rs = getResultSet(ps, args);
@@ -80,8 +83,9 @@ public abstract class SqlExecutor<T> {
         return list;
     }
 
+    @Override
     public T selectOne(String sql, Object... args) {
-        try (Connection conn = DriverManager.getConnection(url, id, password)) {
+        try (Connection conn = getConnection()) {
             List<Method> methods = Arrays.asList(type.getMethods());
             PreparedStatement ps = conn.prepareStatement(sql);
             ResultSet rs = getResultSet(ps, args);
@@ -95,8 +99,9 @@ public abstract class SqlExecutor<T> {
         return null;
     }
 
+    @Override
     public int updateOrDelete(String sql, Object... args) {
-        try (Connection conn = DriverManager.getConnection(url, id, password)) {
+        try (Connection conn = getConnection()) {
             PreparedStatement ps = conn.prepareStatement(sql);
             setPreparedStatement(ps, args);
             return ps.executeUpdate();
@@ -106,8 +111,9 @@ public abstract class SqlExecutor<T> {
         return 0;
     }
 
+    @Override
     public int selectCount(String sql, Object... args) {
-        try (Connection conn = DriverManager.getConnection(url, id, password)) {
+        try (Connection conn = getConnection()) {
             PreparedStatement ps = conn.prepareStatement(sql);
             ResultSet rs = getResultSet(ps, args);
             if (rs.next()) {
@@ -117,6 +123,10 @@ public abstract class SqlExecutor<T> {
             e.printStackTrace();
         }
         return 0;
+    }
+
+    private Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(url, id, password);
     }
 
     private ResultSet getResultSet(PreparedStatement ps, Object[] args) throws SQLException {
